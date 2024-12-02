@@ -19,7 +19,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://extraordinary-nasturtium-17ff87.netlify.app",
     methods: ["GET", "POST"],
   },
 });
