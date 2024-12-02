@@ -6,42 +6,44 @@ import Patient from "../models/Patient.js";
 export const addLabResult = async (req, res) => {
   try {
     const { patientId, testType, result } = req.body;
+
+    // Validate required fields
+    if (!patientId || !testType || !result) {
+      console.error("Missing required fields in request body");
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Save lab result
     const labResult = new LabResult({ patientId, testType, result });
     await labResult.save();
 
-    // Find the patient and populate the doctor details
+    // Find the patient and verify doctor details
     const patient = await Patient.findById(patientId).populate("doctorId");
-
-    // Emit notification to the doctor for this lab result (all results, not just critical)
-    const io = req.app.get("socketio");
-    io.emit(`doctor-alert-${patient.doctorId._id}`, {
-      message: `New lab result for patient ${patient.name}: ${testType} = ${result}`,
-      patientId: patient._id,
-      testType,
-      result,
-      patientName: patient.name,
-      critical: false, // Non-critical lab result
-    });
-
-    // Check if the result is critical (out of the threshold range)
-    const threshold = await Threshold.findOne({ testType });
-    if (
-      threshold &&
-      (result < threshold.minValue || result > threshold.maxValue)
-    ) {
-      io.emit(`doctor-alert-${patient.doctorId._id}`, {
-        message: `Critical lab result for patient ${patient.name}: ${testType} = ${result}`,
-        patientId: patient._id,
-        testType,
-        result,
-        patientName: patient.name,
-        critical: true, // Critical lab result
-      });
+    if (!patient) {
+      console.error(`Patient with ID ${patientId} not found`);
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    if (!patient.doctorId) {
+      console.error(`No doctor assigned to patient ${patient.name}`);
+      return res.status(400).json({ message: "No doctor assigned to patient" });
     }
 
+    // Check if the result is critical
+    const threshold = await Threshold.findOne({ testType });
+    if (!threshold) {
+      console.warn(`Threshold for test type ${testType} not found`);
+    } else if (result < threshold.minValue || result > threshold.maxValue) {
+      console.log(`Critical result detected for ${testType}: ${result}`);
+      // Log critical result handling (add additional logic if needed)
+    }
+
+    console.log("Lab result saved successfully:", labResult);
     res.status(201).json(labResult);
   } catch (err) {
-    res.status(500).send("Server error");
+    console.error("Error in addLabResult:", err.message);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 };
 
