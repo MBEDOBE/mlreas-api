@@ -19,12 +19,18 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://extraordinary-nasturtium-17ff87.netlify.app",
+    origin: "https://mlreas-front.onrender.com",
     methods: ["GET", "POST"],
   },
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://mlreas-front.onrender.com", // Replace with your frontend URL
+    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
+    credentials: true, // Allow cookies if needed
+  })
+);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
